@@ -105,9 +105,8 @@ public class Cpu6502 {
 			super("ADC", 0x65, 2, 3, false);
 		}
 		
-		public void execute() {
-			int addr = memory[regs.PC];			
-			super.execute(memory[addr]);
+		public void execute() {					
+			super.execute(zeroPageAddressing(memory[regs.PC]));
 		}
 	}
 
@@ -118,8 +117,7 @@ public class Cpu6502 {
 		}
 		
 		public void execute() {
-			int addr = memory[regs.PC]+regs.X;
-			super.execute(memory[addr]);
+			super.execute(zeroPageAddressingX(memory[regs.PC]));
 		}
 	}
 
@@ -142,8 +140,7 @@ public class Cpu6502 {
 		}
 		
 		public void execute() {			
-			int addr = readInt(regs.PC)+regs.X;
-			super.execute(memory[addr]);
+			super.execute(absAddressingX(memory[regs.PC]));
 		}
 	}
 
@@ -153,9 +150,8 @@ public class Cpu6502 {
 			super("ADC", 0x79, 3, 4, true);
 		}
 		
-		public void execute() {			
-			int addr = readInt(regs.PC)+regs.Y;			
-			super.execute(memory[addr]);
+		public void execute() {
+			super.execute(absAddressingY(memory[regs.PC]));
 		}
 	}
 	
@@ -166,9 +162,7 @@ public class Cpu6502 {
 		}
 		
 		public void execute() {
-			int zp = (memory[regs.PC]+regs.X)%255;
-			int addr = readInt(zp);			
-			super.execute(memory[addr]);
+			super.execute(indAddressingX(memory[regs.PC]));
 		}
 	}
 	
@@ -178,12 +172,11 @@ public class Cpu6502 {
 			super("ADC", 0x71, 2, 5, true);
 		}
 		
-		public void execute() {
-			int addr = readInt(memory[regs.PC])+regs.Y;
-			super.execute(memory[addr]);
+		public void execute() {			
+			super.execute(indAddressingY(memory[regs.PC]));
 		}
 	}
-	
+
 	private final Instruction[] initInstructionList() {
 		Instruction[] instList = new Instruction[255];		
 		try {			
@@ -232,7 +225,36 @@ public class Cpu6502 {
 	
 	public int readInt(int addr)
 	{
-		return (memory[addr]<<8)+memory[addr+1];			
+		return (memory[addr]<<8)|memory[addr+1];			
+	}
+	private int zeroPageAddressing(int addr) {
+		return memory[addr];
+	}
+
+	private int zeroPageAddressingX(int addr) {		
+		return memory[(addr+regs.X)%255];
+	}
+
+	private int zeroPageAddressingY(int addr) {		
+		return memory[(addr+regs.Y)%255];
+	}
+
+	private int absAddressingX(int addr) {		
+		return memory[addr+regs.X];
+	}
+
+	private int absAddressingY(int addr) {		
+		return memory[addr+regs.Y];
+	}
+
+	private int indAddressingX(int addr) {		
+		int zp = (addr+regs.X)%255;
+		return memory[readInt(zp)];
+	}
+
+	private int indAddressingY(int addr) {		
+		int absAddr = readInt(addr)+regs.Y;	
+		return memory[absAddr];
 	}
 	
 	public void run() {
@@ -242,7 +264,7 @@ public class Cpu6502 {
 			if(inst != null)
 				inst.execute();
 			else
-				System.err.printf("Unknown opcode %x", opcode);
+				System.err.printf("Unknown opcode %x\n", opcode);
 		}
 	}
 }
