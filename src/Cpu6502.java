@@ -9,6 +9,8 @@ public class Cpu6502 {
 	@Target(value=ElementType.TYPE)
 	public @interface InstructionClass {}
 	
+	private enum AddressingMode { IMM, ZP, ZPX, ZPY, IZX, IZY, ABS, ABSX, ABSY, IND, REL, NONE };
+	
 	private static final int STACK_MEMORY = 0x100;
 		
 	private class Registers {
@@ -26,7 +28,11 @@ public class Cpu6502 {
 		boolean negative;
 	};
 	private Registers regs = new Registers();		
-	
+	private Instruction[] instList = initInstructionList();
+	private static AddressingMode[] opcodeAddressingMode = initOpcodeAddressingMode();
+	private int[] memory = new int[65536];
+	private int ticks;
+
 	abstract class Instruction {
 		protected String name;
 		protected int opcode;
@@ -49,8 +55,7 @@ public class Cpu6502 {
 			return opcode;
 		}
 	}	
-	private Instruction[] instList = initInstructionList();
-	
+
 	abstract class InstrADC extends Instruction {
 		public InstrADC(String name, int opcode, int length, int numCycles,
 		           boolean extraCycle) {
@@ -201,9 +206,6 @@ public class Cpu6502 {
 		return instList;
 	}
 	
-	private int[] memory = new int[65536];
-	private int ticks;
-
 	public Cpu6502(int startAddress) {
 		reset(startAddress);
 	}
@@ -257,6 +259,63 @@ public class Cpu6502 {
 		return memory[absAddr];
 	}
 	
+	static private AddressingMode computeAddressingMode(int opcode) {
+		int lowNibble = opcode&0xf; 
+		int highNibble = (opcode>>4)&0xf;
+	
+		if(lowNibble==0x0) {
+			if(highNibble%2==1)
+				return AddressingMode.REL;
+			if(highNibble>=0x8)
+				return AddressingMode.IMM;
+			if(highNibble==0x2)
+				return AddressingMode.ABS;
+			return AddressingMode.NONE;
+		}
+		if(lowNibble==0x2) {
+			return AddressingMode.IMM;
+		}
+		if(lowNibble==1||lowNibble==3) {
+			return (highNibble%2==0)?AddressingMode.IZX:AddressingMode.IZY;
+		}
+		if(lowNibble>=4&&lowNibble<=7) {		
+			return (highNibble%2==0)?AddressingMode.ZP:AddressingMode.ZPX;
+		}
+		if(lowNibble==9||lowNibble==0xB) {		
+			return (highNibble%2==0)?AddressingMode.IMM:AddressingMode.ABSY;
+		}
+		if(lowNibble==0xA||lowNibble==0x8) {
+			return AddressingMode.NONE;
+		}
+		if(lowNibble==0xC) {
+			if(highNibble == 0x6)
+				return AddressingMode.IND;
+			return (highNibble%2==0)?AddressingMode.ABS:AddressingMode.ABSX;
+		}
+		if(lowNibble==0xD) {
+			return (highNibble%2==0)?AddressingMode.ABS:AddressingMode.ABSX;
+		}
+		if(lowNibble==0xE||lowNibble==0xF) {
+			if(highNibble<=0x8||highNibble>=0xC)
+				return (highNibble%2==0)?AddressingMode.ABS:AddressingMode.ABSX;
+			return (highNibble%2==0)?AddressingMode.ABS:AddressingMode.ABSY;
+		}		
+		
+		return AddressingMode.NONE;
+	}
+
+	private static AddressingMode[] initOpcodeAddressingMode() {
+		AddressingMode[] array = new AddressingMode[0xFF];
+		for(int i = 0; i < 255; i++) {
+			array[i] = computeAddressingMode(i);
+		}
+		return array;
+	}
+	
+	private static AddressingMode getAddresingMode(int opcode) {
+		return opcodeAddressingMode[opcode];
+	}
+	
 	public void run() {
 		for(;;) {
 			int opcode = memory[regs.PC++];
@@ -266,5 +325,5 @@ public class Cpu6502 {
 			else
 				System.err.printf("Unknown opcode %x\n", opcode);
 		}
-	}
+	}	
 }
