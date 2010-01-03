@@ -1728,7 +1728,7 @@ public class Cpu6502 {
 		return (readByte(addr+1)<<8)|readByte(addr);			
 	}
 
-	private int writeByte(int addr, int val)
+	public int writeByte(int addr, int val)
 	{
 		return memory[addr] = val;
 	}
@@ -1862,7 +1862,7 @@ public class Cpu6502 {
 		if(mode == AddressingMode.NONE)
 			return 0;
 		
-		int operand = memory[regs.PC++];
+		int operand;
 		switch(mode) {
 		case IMM:
 			operand = memory[regs.PC++];
