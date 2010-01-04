@@ -9,7 +9,7 @@ public class Emu6502 {
 		try {
 			FileInputStream in = new FileInputStream(objName);
 			int c;
-			int addr = 0;
+			int addr = 0x1000;
 			while ((c = in.read()) != -1) {
 				cpu.writeByte(addr++, c);
 			}
@@ -23,7 +23,7 @@ public class Emu6502 {
 		if(args.length != 1)
 			System.exit(0);
 		
-		Cpu6502 cpu = new Cpu6502(0);
+		Cpu6502 cpu = new Cpu6502(0x1000);
 		loadO65InMemory(args[0], cpu);
 		cpu.run();		
 	}

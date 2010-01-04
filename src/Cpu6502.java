@@ -912,7 +912,7 @@ public class Cpu6502 {
 		}
 				
 		public int execute(int operand) {			
-			pushInt(regs.PC-1);
+			pushInt((regs.PC-1)&0xFFFF);
 			regs.PC = operand;
 			return numCycles;
 		}
@@ -1777,8 +1777,8 @@ public class Cpu6502 {
 	}
 	
 	private void pushInt(int val) {
-		int high = (val>>8)&0xf;
-		int low = val&0xf;
+		int high = (val>>8)&0xFF;
+		int low = val&0xFF;
 		pushByte(high);
 		pushByte(low);
 	}
