@@ -1688,15 +1688,9 @@ public class Cpu6502 {
 					instList[inst.getOpcode()] = inst;
 				}
 			}
-		} catch (InvocationTargetException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		}
+		} 
 		return instList;
 	}
 	
