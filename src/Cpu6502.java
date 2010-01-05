@@ -19,11 +19,20 @@ public class Cpu6502 {
 	  CARRY(1);
 	  public final int value;
 	  ProcessorFlags(int val) { value = val;}
-	};
-
-	
+	};		
 	private static final int STACK_MEMORY = 0x100;
-		
+	
+	private static final double NTSC_CLOCK_NS = mhzToNanoSecond(1.7897725);
+	private static final double PAL_CLOCK_NS = mhzToNanoSecond(1.7734474);
+	private static double mhzToNanoSecond(double mhz) {
+		return 1000/mhz;
+	}
+
+	private double clockSpeed = NTSC_CLOCK_NS;
+	public void setClockSpeed(double clockSpeed) {
+		this.clockSpeed = clockSpeed;
+	}
+
 	private class Registers {
 		int PC;
 		int SP;
@@ -65,12 +74,12 @@ public class Cpu6502 {
 	private int ticks;
 
 	abstract class Instruction {
-		protected String name;
-		protected int opcode;
-		protected int length;
-		protected AddressingMode mode;
-		protected int numCycles;
-		protected boolean extraCycle;
+		protected final String name;
+		protected final int opcode;
+		protected final int length;
+		protected final AddressingMode mode;
+		protected final int numCycles;
+		protected final boolean extraCycle;
 
 		public Instruction(String name, int opcode, int length, AddressingMode mode, 
 				int numCycles, boolean extraCycle) {
@@ -1925,16 +1934,21 @@ public class Cpu6502 {
 	
 	public void run() {
 		for(;;) {
+			long startTime = System.nanoTime();
 			int opcode = memory[regs.PC++];
 			Instruction inst = instList[opcode];
 			AddressingMode mode = getAddressingMode(opcode);
 			boolean emulAddressingBug = (inst.name == "JMP");
-			int operand = getOperand(mode, emulAddressingBug);			
+			int operand = getOperand(mode, emulAddressingBug);
+			int execCycles = 0;
 			if(inst != null) {
-				ticks += inst.execute(operand);				
+				execCycles = inst.execute(operand);				
 			}
 			else
 				System.err.printf("Unknown opcode %x\n", opcode);
+			ticks += execCycles;	
+			long neededTime = (long)(execCycles*clockSpeed);
+			while(System.nanoTime()-startTime < neededTime);
 		}
 	}	
 }
