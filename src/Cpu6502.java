@@ -1,7 +1,6 @@
 import java.lang.String;
 import java.lang.annotation.*;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 public class Cpu6502 {
 	@Retention(RetentionPolicy.RUNTIME)
@@ -94,6 +93,29 @@ public class Cpu6502 {
 			return opcode;
 		}
 		
+		
+		/**
+		 * @return true if the instruction operand is an address
+		 */
+		private boolean isAddressOperand() {
+			boolean isPtr =(mode != AddressingMode.IMM) && (mode != AddressingMode.REL) &&
+						   (mode != AddressingMode.ACC);
+			return isPtr;
+		}
+		
+		/**
+		 * @param addr address where the read/write is done
+		 * @return the number of cycles taken by the instruction
+		 */
+		protected int getExecCycles(int addr) {
+			int extra = 0;
+			if(extraCycle && isAddressOperand()) {
+				boolean crossBoundary = (addr&0xFF) == 0xFF; 
+				extra = crossBoundary?1:0;
+			}
+			return numCycles+extra;
+		}
+		
 		protected void updateNZ(int res) {
 			regs.zero = (res == 0);
 			regs.negative = (res&0x80) != 0;
@@ -101,9 +123,8 @@ public class Cpu6502 {
 		
 		protected int convertOperand(int operand) {
 			if(mode == AddressingMode.ACC)
-				return regs.A;
-			boolean isPtr =(mode != AddressingMode.IMM) && (mode != AddressingMode.REL);				
-			return isPtr ? memory[operand] : operand;
+				return regs.A;							
+			return isAddressOperand() ? memory[operand] : operand;
 		}
 		
 		/**
@@ -153,7 +174,7 @@ public class Cpu6502 {
 				bcdAdd(operand);				
 			else
 				binaryAdd(operand);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -223,7 +244,7 @@ public class Cpu6502 {
 			operand = convertOperand(operand);			
 			regs.A = regs.A&operand;
 			updateNZ(regs.A);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -297,7 +318,7 @@ public class Cpu6502 {
 			res &= 0xFF;
 			outputResult(addr, res);
 			updateNZ(res);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 
@@ -424,7 +445,7 @@ public class Cpu6502 {
 			regs.overflow = (operand&0x40) != 0;
 			int res = regs.A&operand;
 			regs.zero = (res == 0);			
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 
@@ -545,7 +566,7 @@ public class Cpu6502 {
 			regs.carry = (regs.A >= operand);
 			regs.zero = (regs.A == operand);
 			regs.negative = (res&0x80) == 0;
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -689,7 +710,7 @@ public class Cpu6502 {
 			int res = (memory[operand]-1)&0xFF;
 			memory[operand] = res;
 			updateNZ(res);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -723,7 +744,7 @@ public class Cpu6502 {
 
 	@InstructionClass class InstrDEX extends Instruction {
 		public InstrDEX() {			
-			super("DEX", 0xCA, 1, AddressingMode.NONE, 2, true);
+			super("DEX", 0xCA, 1, AddressingMode.NONE, 2, false);
 		}
 				
 		public int execute(int operand) {			
@@ -735,7 +756,7 @@ public class Cpu6502 {
 	
 	@InstructionClass class InstrDEY extends Instruction {
 		public InstrDEY() {			
-			super("DEY", 0x88, 1, AddressingMode.NONE, 2, true);
+			super("DEY", 0x88, 1, AddressingMode.NONE, 2, false);
 		}
 				
 		public int execute(int operand) {			
@@ -755,7 +776,7 @@ public class Cpu6502 {
 			operand = convertOperand(operand);
 			regs.A = regs.A^operand;
 			updateNZ(regs.A);			
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -825,7 +846,7 @@ public class Cpu6502 {
 			int res = (memory[operand]+1)&0xFF;
 			memory[operand] = res;
 			updateNZ(res);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -859,7 +880,7 @@ public class Cpu6502 {
 	
 	@InstructionClass class InstrINX extends Instruction {
 		public InstrINX() {			
-			super("INX", 0xE8, 1, AddressingMode.NONE, 2, true);
+			super("INX", 0xE8, 1, AddressingMode.NONE, 2, false);
 		}
 				
 		public int execute(int operand) {			
@@ -871,7 +892,7 @@ public class Cpu6502 {
 	
 	@InstructionClass class InstrINY extends Instruction {
 		public InstrINY() {			
-			super("INY", 0xC8, 1, AddressingMode.NONE, 2, true);
+			super("INY", 0xC8, 1, AddressingMode.NONE, 2, false);
 		}
 				
 		public int execute(int operand) {			
@@ -940,7 +961,7 @@ public class Cpu6502 {
 			operand = convertOperand(operand);
 			regs.A = operand;
 			updateNZ(regs.A);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -1010,7 +1031,7 @@ public class Cpu6502 {
 			operand = convertOperand(operand);
 			regs.X = operand;
 			updateNZ(regs.X);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -1059,7 +1080,7 @@ public class Cpu6502 {
 			operand = convertOperand(operand);
 			regs.Y = operand;
 			updateNZ(regs.Y);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -1171,7 +1192,7 @@ public class Cpu6502 {
 			operand = convertOperand(operand);
 			regs.A |= operand;
 			updateNZ(regs.A);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
@@ -1430,7 +1451,7 @@ public class Cpu6502 {
 				bcdSub(operand);				
 			else
 				binarySub(operand);
-			return numCycles;
+			return getExecCycles(operand);
 		}
 	}
 	
