@@ -23,7 +23,7 @@ public class Cpu6502 {
 	private static final int STACK_MEMORY = 0x100;
 	
 	private static final double NTSC_CLOCK_NS = mhzToNanoSecond(1.7897725);
-	private static final double PAL_CLOCK_NS = mhzToNanoSecond(1.7734474);
+	//private static final double PAL_CLOCK_NS = mhzToNanoSecond(1.7734474);
 	private static double mhzToNanoSecond(double mhz) {
 		return 1000/mhz;
 	}
@@ -133,7 +133,7 @@ public class Cpu6502 {
 		protected int convertOperand(int operand) {
 			if(mode == AddressingMode.ACC)
 				return regs.A;							
-			return isAddressOperand() ? memory[operand] : operand;
+			return isAddressOperand() ? readByte(operand) : operand;
 		}
 		
 		/**
@@ -716,8 +716,8 @@ public class Cpu6502 {
 		}
 				
 		public int execute(int operand) {			
-			int res = (memory[operand]-1)&0xFF;
-			memory[operand] = res;
+			int res = (readByte(operand)-1)&0xFF;
+			writeByte(operand, res);
 			updateNZ(res);
 			return getExecCycles(operand);
 		}
@@ -852,8 +852,8 @@ public class Cpu6502 {
 		}
 				
 		public int execute(int operand) {			
-			int res = (memory[operand]+1)&0xFF;
-			memory[operand] = res;
+			int res = (readByte(operand)+1)&0xFF;
+			writeByte(operand, res);
 			updateNZ(res);
 			return getExecCycles(operand);
 		}
@@ -1743,8 +1743,16 @@ public class Cpu6502 {
 		regs.negative = false;
 	}
 
+	private int mirrorMemory(int addr) {
+		if(addr <= 0x1FFF)
+			return addr&0x7FF;
+		if(addr>=0x2000 && addr<=0x3FFF)
+			return addr&0x2007;
+		return addr;
+	}
+	
 	private int readByte(int addr) {
-		return memory[addr];
+		return memory[mirrorMemory(addr)]&0xFF;
 	}
 
 	private int readInt(int addr)
@@ -1754,7 +1762,7 @@ public class Cpu6502 {
 
 	public int writeByte(int addr, int val)
 	{
-		return memory[addr] = val;
+		return memory[mirrorMemory(addr)] = val&0xFF;
 	}
 
 	private int readIntJmpBug(int addr)
